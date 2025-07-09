@@ -1,1 +1,23 @@
+# Use a imagem oficial do Node.js como base
+FROM node:20-alpine
 
+# Cria um diretório de trabalho
+WORKDIR /usr/src/app
+
+# Copia o package.json e package-lock.json (se existir) para o diretório de trabalho
+COPY package*.json ./
+
+# Instala as dependências do projeto
+# RUN npm install
+
+# Copia o restante dos arquivos do projeto para o diretório de trabalho
+# COPY . .
+
+# Expõe a porta 3000, se necessário (ajuste conforme a porta usada pela sua aplicação)
+EXPOSE 3000
+
+# Torna o script executável
+# RUN chmod +x ./bin/www
+
+# Comando para rodar o script
+CMD ["node", "./bin/www"]

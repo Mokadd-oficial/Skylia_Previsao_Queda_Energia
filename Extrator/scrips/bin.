@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+
+/**
+ * CLI Script for Interacting with the Extractor Server
+ *
+ * Este script utiliza o Commander.js para criar uma interface de linha de comando (CLI).
+ * Ele interage com um serviço de extração e possui comandos para operar o extrator CGESP.
+ *
+ * Dependências:
+ * - dotenv: Carrega variáveis de ambiente de um arquivo `.env` para o processo.
+ * - commander: Facilita a criação de uma CLI com comandos e argumentos.
+ * - CgespService: Serviço de extração de dados da CGESP.
+ */
+
+const logger = require("../utils/logger.service");
+const { generateDateRange, sleep } = require("../utils/helpers.util");
+
+/**
+ * Carrega variáveis de ambiente de um arquivo .env, se presente.
+ */
+require("dotenv").config();
+
+/**
+ * Importa o Commander.js para configurar a CLI.
+ */
+const { Command } = require("commander");
+const program = new Command();
+
+/**
+ * Importa o serviço CGESP que será utilizado para realizar as operações do extrator.
+ */
+const CgespService = require("../services/CGESP/index.service");
+
+/**
+ * Define a versão e a descrição geral do CLI.
+ * - Versão: 1.0.0
+ * - Descrição: CLI para interação com o servidor de extração
+ */
+program
+  .version("1.0.0")
+  .description("CLI for interacting with extractor server");
+
+/**
+ * Comando "cgesp <date>"
+ *
+ * Comando responsável por iniciar o extrator CGESP para uma data específica.
+ *
+ * Parâmetros:
+ * - <date>: Data em que o extrator deve buscar os dados (no formato `YYYY/MM/DD`).
+ *
+ * Exemplo de uso:
+ * $ cli.js cgesp 2024-09-01
+ *
+ * Ação:
+ * - O comando exibe a data e pode executar o serviço de extração baseado na data fornecida.
+ */
+program
+  .command("cgesp <date>")
+  .description(
+    "CLI para interagir com o extrator CGESP usando uma data específica"
+  )
+  .action(async (date) => {
+    logger.info(`CLI [cgesp <${date}>] - Starting`);
+
+    const cgespService = new CgespService(date);
+    await cgespService.scrapper();
+    const data = cgespService.getObject();
+
+    logger.info(`CLI [cgesp <${date}>] - End`, { data });
+  });
+
+/**
+ * Comando "cgesp-many <start> <end>"
+ *
+ * Comando para iniciar o extrator CGESP para um intervalo de datas.
+ *
+ * Parâmetros:
+ * - <start>: Data de início do intervalo (no formato `YYYY/MM/DD`).
+ * - <end>: Data de fim do intervalo (no formato `YYYY/MM/DD`).
+ * - [limit]: Número de requisições antes de esperar (padrão: 60).
+ *
+ * Exemplo de uso:
+ * $ cli.js cgesp-many 2024-09-01 2024-09-07
+ *
+ * Ação:
+ * - Este comando é destinado a extrair dados da CGESP para múltiplas datas entre o intervalo fornecido.
+ * - Atualmente, a ação ainda precisa ser implementada.
+ */
+program
+  .command("cgesp-many <start> <end> [limit]")
+  .description(
+    "CLI para interagir com o extrator CGESP usando um intervalo de datas"
+  )
+  .action(async (start, end, limit = 60) => {
+    logger.info(`CLI ['cgesp-many <${start}> <${end}>] - Starting`);
+    logger.info(`CLI - Extraindo dados da CGESP de ${start} até ${end}`);
+
+    let data = [];
+    const dates = generateDateRange(start, end);
+    // Exemplo de implementação futura:
+    let count = 0;
+    for (let date of dates) {
+      if (count % limit == 0 && count !== 0) {
+        logger.info(`CLI - sleep(180000)`);
+        await sleep(180000);
+      }
+
+      const cgespService = new CgespService(date);
+      await cgespService.scrapper();
+      const data = cgespService.getObject();
+
+      logger.info(`Dados coletados com sucesso!`, { data });
+
+      count += 1;
+
+      if (data.length === 0) continue;
+
+      data.push(cgespService.getObject());
+    }
+
+    console.log(data);
+
+    logger.info(`CLI [cgesp-many <${start}> <${end}>] - End`, { data });
+  });
+
+/**
+ * Analisa os argumentos fornecidos ao CLI e executa o comando correspondente.
+ */
+program.parse(process.argv);

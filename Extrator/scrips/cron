@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+
+/**
+ * Script de Agendamento com node-cron
+ * 
+ * Este script utiliza a biblioteca `node-cron` para agendar e executar tarefas automaticamente. 
+ * A cada dia, à meia-noite, ele executa uma tarefa que extrai dados usando um serviço CGESP e os 
+ * processa, registrando o início e fim do processo com um logger.
+ * 
+ * Dependências:
+ * - node-cron: Biblioteca para agendamento de tarefas com expressões cron.
+ * - moment: Biblioteca para manipulação e formatação de datas.
+ * - logger: Serviço de logging personalizado.
+ * - CgespService: Serviço de extração de dados (presumido estar implementado).
+ * 
+ * Formato de uma expressão cron:
+ * *  * * * * * 
+ * | | | | | |
+ * | | | | | ----- Dia da semana (0 - 7) (0 ou 7 = domingo)
+ * | | | | ------- Mês (1 - 12)
+ * | | | --------- Dia do mês (1 - 31)
+ * | | ----------- Hora (0 - 23)
+ * |  ------------ Minuto (0 - 59)
+ * --------------- Segundos (0 - 59) (Opcional)
+ * 
+ * Para mais informações sobre cron: https://crontab.guru/
+ */
+
+// Importa bibliotecas necessárias
+const cron = require("node-cron");
+const moment = require("moment");
+const logger = require("../utils/logger.service"); // Presumindo que você tem um serviço de log
+const CgespService = require('../services/CGESP/index.service'); // Serviço de extração de dados
+
+/**
+ * Agendamento de tarefa com node-cron
+ * 
+ * A expressão "0 0 * * *" indica que a tarefa será executada todos os dias à meia-noite.
+ * 
+ * O fluxo da tarefa é:
+ * 1. Registrar o início da execução no logger.
+ * 2. Capturar a data atual formatada como "YYYY-MM-DD" usando moment.js.
+ * 3. Inicializar o serviço CGESP com a data atual.
+ * 4. Executar a função `scrapper` do serviço CGESP para buscar os dados.
+ * 5. Registrar os dados obtidos no logger e exibir uma mensagem de sucesso no console.
+ * 6. Registrar o término da tarefa no logger.
+ */
+cron.schedule("0 0 * * *", async () => {
+  // Início do processo
+  logger.info(`CRON - Starting`);
+
+  // Captura a data atual no formato "YYYY-MM-DD"
+  const date = moment().format("YYYY-MM-DD");
+
+  try {
+    // Inicializa o serviço CGESP com a data do dia atual
+    const cgespService = new CgespService(date);
+
+    // Executa o extrator de dados
+    await cgespService.scrapper();
+
+    // Obtém os dados extraídos
+    const data = cgespService.getObject();
+
+    // Registra os dados no logger
+    logger.info(`CRON - Data extracted successfully`, { data });
+
+    // Mensagem de sucesso no console
+    console.log(`Tarefa agendada executada com sucesso para a data ${date}`);
+
+  } catch (error) {
+    // Captura e registra qualquer erro no processo
+    logger.error(`CRON - Error during execution`, { error });
+  }
+
+  // Fim do processo
+  logger.info(`CRON - End`);
+});
